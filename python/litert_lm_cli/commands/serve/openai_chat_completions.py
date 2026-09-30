@@ -277,6 +277,9 @@ def _handle_chat_completions(
             conv, reasoning_tokens=reasoning_tokens
         ),
     }
+    timings = openai_common.extract_benchmark_timings(conv)
+    if timings is not None:
+      resp_body["timings"] = timings
     handler.headers_sent = True
     handler.send_response(200)
     handler.send_header("Content-Type", "application/json")
@@ -284,6 +287,7 @@ def _handle_chat_completions(
     handler.wfile.write(
         (openai_common.dump_json(resp_body, indent=2) + "\n").encode("utf-8")
     )
+    openai_common.log_benchmark_timings(conv)
     return
 
   include_usage = bool(

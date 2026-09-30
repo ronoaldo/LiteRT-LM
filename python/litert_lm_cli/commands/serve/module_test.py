@@ -592,6 +592,33 @@ class ServeTest(parameterized.TestCase):
         {},
     )
 
+  def test_benchmark_timings_extraction_and_logging(self):
+    mock_conv = mock.MagicMock()
+    mock_info = mock.MagicMock(
+        last_prefill_token_count=120,
+        last_prefill_tokens_per_second=1500.5,
+        last_decode_token_count=45,
+        last_decode_tokens_per_second=35.2,
+        time_to_first_token_in_second=0.08,
+    )
+    mock_conv.get_benchmark_info.return_value = mock_info
+
+    timings = openai_common.extract_benchmark_timings(mock_conv)
+    self.assertIsNotNone(timings)
+    self.assertEqual(timings["prompt_n"], 120)
+    self.assertEqual(timings["prompt_per_second"], 1500.5)
+    self.assertEqual(timings["predicted_n"], 45)
+    self.assertEqual(timings["predicted_per_second"], 35.2)
+    self.assertEqual(timings["time_to_first_token_ms"], 80.0)
+
+    # Verify log_benchmark_timings executes without exception
+    openai_common.log_benchmark_timings(mock_conv)
+
+    # When get_benchmark_info raises, extract_benchmark_timings returns None
+    mock_conv.get_benchmark_info.side_effect = RuntimeError("fail")
+    self.assertIsNone(openai_common.extract_benchmark_timings(mock_conv))
+    openai_common.log_benchmark_timings(mock_conv)
+
   def test_cors_headers_disabled_by_default(self):
     server = util.LiteRTLMServer(("127.0.0.1", 0), openai_handler.OpenAIHandler)
     port = server.server_port

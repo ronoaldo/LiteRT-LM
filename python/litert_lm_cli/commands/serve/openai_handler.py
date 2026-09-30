@@ -151,6 +151,7 @@ class OpenAIHandler(util.CORSRequestHandler):
         self.wfile.flush()
       self.wfile.write(formatter.format_final())
       self.wfile.flush()
+      openai_common.log_benchmark_timings(conv)
     except Exception as e:  # pylint: disable=broad-exception-caught
       click.echo(
           click.style(

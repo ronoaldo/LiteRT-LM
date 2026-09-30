@@ -24,6 +24,8 @@ import traceback
 from typing import Any
 import urllib.request
 
+import click
+
 import litert_lm
 
 from litert_lm_cli import config as cli_config
@@ -248,6 +250,46 @@ def compute_token_usage(
           "reasoning_tokens": reasoning_tokens,
       },
   }
+
+
+def extract_benchmark_timings(
+    conv: litert_lm.Conversation,
+) -> dict[str, Any] | None:
+  """Extracts benchmark timings dict from conversation."""
+  try:
+    info = conv.get_benchmark_info()
+    return {
+        "prompt_n": info.last_prefill_token_count,
+        "prompt_per_second": round(info.last_prefill_tokens_per_second, 2),
+        "predicted_n": info.last_decode_token_count,
+        "predicted_per_second": round(info.last_decode_tokens_per_second, 2),
+        "time_to_first_token_ms": round(
+            info.time_to_first_token_in_second * 1000, 2
+        ),
+    }
+  except Exception:
+    return None
+
+
+def log_benchmark_timings(conv: litert_lm.Conversation) -> None:
+  """Logs benchmark timings (tokens per second) to console."""
+  try:
+    info = conv.get_benchmark_info()
+    prefill_tps = info.last_prefill_tokens_per_second
+    prefill_count = info.last_prefill_token_count
+    decode_tps = info.last_decode_tokens_per_second
+    decode_count = info.last_decode_token_count
+    ttft = info.time_to_first_token_in_second
+    click.echo(
+        click.style(
+            f"[timings] prefill: {prefill_tps:.2f} t/s ({prefill_count} tokens) | "
+            f"decode: {decode_tps:.2f} t/s ({decode_count} tokens) | "
+            f"TTFT: {ttft:.3f}s",
+            fg="cyan",
+        )
+    )
+  except Exception:
+    pass
 
 
 class OpenAIStreamFormatter(abc.ABC):
